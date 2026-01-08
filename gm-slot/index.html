@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>GMシール抽選会</title>
+
+<style>
+body {
+  background: #fff8e7;
+  text-align: center;
+  font-family: "Hiragino Maru Gothic ProN", sans-serif;
+}
+
+h1 {
+  color: #ff6b6b;
+  margin-top: 20px;
+}
+
+#slot {
+  margin: 30px auto;
+  width: 260px;
+  height: 260px;
+  border: 10px solid #ffcc66;
+  border-radius: 30px;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#slot img {
+  width: 220px;
+  height: 220px;
+}
+
+button {
+  font-size: 24px;
+  padding: 15px 40px;
+  border-radius: 20px;
+  border: none;
+  background: #4caf50;
+  color: white;
+}
+
+button:disabled {
+  background: #aaa;
+}
+
+#result {
+  margin-top: 25px;
+  font-size: 22px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>GMシール抽選会</h1>
+
+<div id="slot">
+  <img id="slotImage" src="images/sticker01.png">
+</div>
+
+<button id="enableBtn" onclick="enable()">🔊 音を出してはじめる</button>
+<br><br>
+<button id="startBtn" onclick="startSlot()" disabled>スタート</button>
+
+<div id="result"></div>
+
+<script>
+/* ====== シール ====== */
+const stickers = [];
+for (let i = 1; i <= 40; i++) {
+  stickers.push(`images/sticker${String(i).padStart(2,"0")}.png`);
+}
+
+/* ====== 効果音 ====== */
+const startSound = new Audio("sounds/start.mp3");
+const spinSound  = new Audio("sounds/spin.mp3");
+spinSound.loop = true;
+const fanfareSound = new Audio("sounds/fanfare.mp3");
+
+/* ====== ナレーション文章（ここに直接書く） ====== */
+const narrationStartText = `
+１年間、GMチャレンジを頑張りましたね。
+これから、GMシール抽選会を始めます。
+スロットが回り、止まったシールが、
+あなたのクラスの、あたりシールです。
+それでは、スタートします。
+`;
+
+const narrationEndText = `
+みなさん、自分のGMカードに、
+あたりシールはありましたか。
+確認してください。
+
+あたりシールがあった人は、
+おめでとうございます。
+来月、景品をお渡しします。
+
+シールがなかった人も、
+見逃していないか確認するので、
+先生にGMカードを渡してください。
+
+来年も、GMチャレンジで、
+元気に生活しましょう。
+これで、GMシール抽選会を終わります。
+`;
+
+/* ====== AI音声読み上げ ====== */
+function speak(text) {
+  const uttr = new SpeechSynthesisUtterance(text);
+  uttr.lang = "ja-JP";
+  uttr.rate = 0.8;   // ゆっくり
+  uttr.pitch = 1.0;
+  speechSynthesis.speak(uttr);
+}
+
+/* ====== 初回タップ ====== */
+function enable() {
+  speak(narrationStartText);
+  document.getElementById("startBtn").disabled = false;
+  document.getElementById("enableBtn").style.display = "none";
+}
+
+let timer;
+
+/* ====== スロット開始 ====== */
+function startSlot() {
+  document.getElementById("startBtn").disabled = true;
+  document.getElementById("result").innerHTML = "";
+
+  startSound.play();
+
+  spinSound.currentTime = 0;
+  spinSound.play();
+
+  timer = setInterval(() => {
+    const r = Math.floor(Math.random() * stickers.length);
+    document.getElementById("slotImage").src = stickers[r];
+  }, 80);
+
+  setTimeout(stopSlot, 3000);
+}
+
+/* ====== 停止 ====== */
+function stopSlot() {
+  clearInterval(timer);
+  spinSound.pause();
+
+  fanfareSound.currentTime = 0;
+  fanfareSound.play();
+
+  const img = document.getElementById("slotImage").src;
+  document.getElementById("result").innerHTML =
+    "あなたのクラスのあたりシールは、<br>" +
+    "<img src='" + img + "' style='width:160px;margin-top:10px;'>";
+
+  setTimeout(() => {
+    speak(narrationEndText);
+  }, 1500);
+}
+</script>
+
+</body>
+</html>
