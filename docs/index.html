@@ -74,9 +74,10 @@ button:disabled {
 const baseRaw = 'https://raw.githubusercontent.com/work-sakumi/gm-slot/bcc055a9fca233e9970d7b3436db7a4c856ee167/gm-slot';
 
 /* ====== シール ====== */
+const baseRaw = 'https://raw.githubusercontent.com/work-sakumi/gm-slot/main/gm-slot';
 const stickers = [];
 for (let i = 1; i <= 40; i++) {
-  stickers.push(`${baseRaw}/images/sticker${String(i).padStart(2,"0")}.png`);
+  stickers.push(`${baseRaw}/images/stickers${String(i).padStart(2,"0")}.png`);
 }
 
 /* プレロード（画像ファイルが存在するかの早期確認にもなる） */
