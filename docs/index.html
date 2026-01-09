@@ -60,7 +60,9 @@ button:disabled {
 <h1>GMシール抽選会</h1>
 
 <div id="slot">
-  <img id="slotImage" src="https://raw.githubusercontent.com/work-sakumi/gm-slot/bcc055a9fca233e9970d7b3436db7a4c856ee167/gm-slot/images/sticker01.png" alt="slot image">
+  <img id="slotImage"
+       src="https://raw.githubusercontent.com/work-sakumi/gm-slot/main/gm-slot/images/stickers01.png"
+       alt="slot image">
 </div>
 
 <button id="enableBtn">🔊 音を出してはじめる</button>
@@ -70,33 +72,28 @@ button:disabled {
 <div id="result"></div>
 
 <script>
-/* ====== ベース（固定の raw URL を使い、既存の gm-slot フォルダ内の資産を参照します） */
-const baseRaw = 'https://raw.githubusercontent.com/work-sakumi/gm-slot/bcc055a9fca233e9970d7b3436db7a4c856ee167/gm-slot';
-
-/* ====== シール ====== */
+/* ====== ベースURL（raw GitHub） ====== */
 const baseRaw = 'https://raw.githubusercontent.com/work-sakumi/gm-slot/main/gm-slot';
+
+/* ====== シール画像 ====== */
 const stickers = [];
 for (let i = 1; i <= 40; i++) {
   stickers.push(`${baseRaw}/images/stickers${String(i).padStart(2,"0")}.png`);
 }
 
-/* プレロード（画像ファイルが存在するかの早期確認にもなる） */
-const preloaded = [];
+/* プレロード（任意だが安定性UP） */
 stickers.forEach(src => {
   const img = new Image();
   img.src = src;
-  img.onload = () => console.log('image loaded:', src);
-  img.onerror = () => console.warn('image NOT found:', src);
-  preloaded.push(img);
 });
 
-/* ====== 効果音（既存の sounds ディレクトリを raw から参照） */
-const startSound = new Audio(`${baseRaw}/sounds/start.mp3`);
-const spinSound  = new Audio(`${baseRaw}/sounds/spin.mp3`);
-spinSound.loop = true;
+/* ====== 効果音 ====== */
+const startSound   = new Audio(`${baseRaw}/sounds/start.mp3`);
+const spinSound    = new Audio(`${baseRaw}/sounds/spin.mp3`);
 const fanfareSound = new Audio(`${baseRaw}/sounds/fanfare.mp3`);
+spinSound.loop = true;
 
-/* ====== ナレーション文章（ここに直接書く） ====== */
+/* ====== ナレーション ====== */
 const narrationStartText = `
 １年間、GMチャレンジを頑張りましたね。
 これから、GMシール抽選会を始めます。
@@ -123,57 +120,46 @@ const narrationEndText = `
 これで、GMシール抽選会を終わります。
 `;
 
-/* ====== AI音声読み上げ ====== */
+/* ====== 音声読み上げ ====== */
 function speak(text) {
-  try {
-    const uttr = new SpeechSynthesisUtterance(text);
-    uttr.lang = "ja-JP";
-    uttr.rate = 0.8;   // ゆっくり
-    uttr.pitch = 1.0;
-    speechSynthesis.speak(uttr);
-  } catch (e) {
-    console.warn('speech failed:', e);
-  }
+  if (!window.speechSynthesis) return;
+  const uttr = new SpeechSynthesisUtterance(text);
+  uttr.lang = "ja-JP";
+  uttr.rate = 0.8;
+  uttr.pitch = 1.0;
+  speechSynthesis.speak(uttr);
 }
 
-/* ====== UI 要素 ====== */
+/* ====== UI ====== */
 const enableBtn = document.getElementById('enableBtn');
-const startBtn = document.getElementById('startBtn');
+const startBtn  = document.getElementById('startBtn');
 const slotImage = document.getElementById('slotImage');
 const resultDiv = document.getElementById('result');
 
 enableBtn.addEventListener('click', () => {
-  // 常に start を有効化する（Speech API が使えない環境でも進められるように）
   startBtn.disabled = false;
   enableBtn.style.display = 'none';
 
-  // 話す試み（ユーザー操作の直後なので多くのブラウザで許可される）
-  try {
-    speak(narrationStartText);
-  } catch (e) {
-    console.warn('speak error:', e);
-  }
+  speak(narrationStartText);
 
-  // (オーディオの事前再生で unlock を試みる: エラーは無視)
-  startSound.play().catch(e => console.info('startSound play blocked (ignored):', e));
-  spinSound.play().then(() => { spinSound.pause(); spinSound.currentTime = 0; }).catch(()=>{});
-  fanfareSound.play().then(() => { fanfareSound.pause(); fanfareSound.currentTime = 0; }).catch(()=>{});
+  // 音声アンロック（失敗してもOK）
+  startSound.play().then(()=>startSound.pause()).catch(()=>{});
+  spinSound.play().then(()=>spinSound.pause()).catch(()=>{});
+  fanfareSound.play().then(()=>fanfareSound.pause()).catch(()=>{});
 });
 
+/* ====== スロット制御 ====== */
 let timer = null;
 
-/* ====== スロット開始 ====== */
 function startSlot() {
-  console.log('startSlot called');
   startBtn.disabled = true;
   resultDiv.innerHTML = "";
 
-  // 音の再生は Promise を catch して例外で止めない
   startSound.currentTime = 0;
-  startSound.play().catch(e => console.warn('startSound.play() rejected:', e));
+  startSound.play().catch(()=>{});
 
   spinSound.currentTime = 0;
-  spinSound.play().catch(e => console.warn('spinSound.play() rejected:', e));
+  spinSound.play().catch(()=>{});
 
   timer = setInterval(() => {
     const r = Math.floor(Math.random() * stickers.length);
@@ -183,34 +169,26 @@ function startSlot() {
   setTimeout(stopSlot, 3000);
 }
 
-/* ====== 停止 ====== */
 function stopSlot() {
-  console.log('stopSlot called');
-  if (timer) {
-    clearInterval(timer);
-    timer = null;
-  }
-  // 停止音
-  try {
-    spinSound.pause();
-  } catch (e) { console.warn(e); }
+  clearInterval(timer);
+  timer = null;
+
+  spinSound.pause();
 
   fanfareSound.currentTime = 0;
-  fanfareSound.play().catch(e => console.warn('fanfare play rejected:', e));
+  fanfareSound.play().catch(()=>{});
 
   const img = slotImage.src;
   resultDiv.innerHTML =
     "あなたのクラスのあたりシールは、<br>" +
-    "<img src='" + img + "' style='width:160px;margin-top:10px;'>";
+    `<img src="${img}" style="width:160px;margin-top:10px;">`;
 
   setTimeout(() => {
     speak(narrationEndText);
-    // スタートを再度有効にする
     startBtn.disabled = false;
   }, 1500);
 }
 
-/* イベントバインド（インライン onclick を除去） */
 startBtn.addEventListener('click', startSlot);
 </script>
 
