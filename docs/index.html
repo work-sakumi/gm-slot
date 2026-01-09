@@ -2,194 +2,218 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="robots" content="noindex,nofollow">
 <title>GMシール抽選会</title>
 
 <style>
-body {
-  background: #fff8e7;
-  text-align: center;
-  font-family: "Hiragino Maru Gothic ProN", sans-serif;
-}
+  body {
+    margin: 0;
+    font-family: "Rounded Mplus 1c", sans-serif;
+    background: linear-gradient(#fff7fb, #ffeaf4);
+    text-align: center;
+  }
 
-h1 {
-  color: #ff6b6b;
-  margin-top: 20px;
-}
+  h1 {
+    font-size: 42px;
+    color: #ff4f9a;
+    margin: 20px 0;
+  }
 
-#slot {
-  margin: 30px auto;
-  width: 260px;
-  height: 260px;
-  border: 10px solid #ffcc66;
-  border-radius: 30px;
-  background: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+  .screen { display: none; }
+  .active { display: block; }
 
-#slot img {
-  width: 220px;
-  height: 220px;
-}
+  .slot {
+    width: 360px;
+    height: 360px;
+    margin: 20px auto;
+    border: 12px solid #ff9fc9;
+    border-radius: 30px;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 
-button {
-  font-size: 24px;
-  padding: 15px 40px;
-  border-radius: 20px;
-  border: none;
-  background: #4caf50;
-  color: white;
-}
+  #sealArea img {
+    max-width: 95%;
+    max-height: 95%;
+  }
 
-button:disabled {
-  background: #aaa;
-}
+  .resultText {
+    font-size: 26px;
+    margin-top: 12px;
+    color: #444;
+    line-height: 1.5;
+  }
 
-#result {
-  margin-top: 25px;
-  font-size: 22px;
-}
+  button {
+    font-size: 28px;
+    padding: 16px 50px;
+    margin: 12px;
+    border-radius: 40px;
+    border: none;
+    background: #ff4f9a;
+    color: white;
+    cursor: pointer;
+  }
 </style>
 </head>
 
 <body>
 
-<h1>GMシール抽選会</h1>
-
-<div id="slot">
-  <img id="slotImage"
-       src="https://raw.githubusercontent.com/work-sakumi/gm-slot/main/gm-slot/images/stickers01.png"
-       alt="slot image">
+<!-- ナレーション画面 -->
+<div id="intro" class="screen active">
+  <h1>🎉 GMシール抽選会 🎉</h1>
+  <button onclick="playIntroNarration()">ナレーション再生</button><br>
+  <button onclick="startGame()">スタート</button>
 </div>
 
-<button id="enableBtn">🔊 音を出してはじめる</button>
-<br><br>
-<button id="startBtn" disabled>スタート</button>
+<!-- スロット画面 -->
+<div id="game" class="screen">
+  <h1>🎉 GMシール抽選会 🎉</h1>
 
-<div id="result"></div>
+  <div class="slot">
+    <div id="sealArea">
+      <img src="stickers01.png">
+    </div>
+  </div>
+
+  <button onclick="spin()">シールを引く</button>
+  <button onclick="fullscreen()">全画面</button>
+</div>
+
+<!-- 効果音 -->
+<audio id="startSound" src="start.mp3"></audio>
+<audio id="spinSound" src="spin.mp3" loop></audio>
+<audio id="winSound" src="fanfare.mp3"></audio>
 
 <script>
-/* ====== ベースURL（raw GitHub） ====== */
-const baseRaw = 'https://raw.githubusercontent.com/work-sakumi/gm-slot/main/gm-slot';
+  /* ===== ナレーション共通関数（ゆっくり版） ===== */
+  function speak(text) {
+    const uttr = new SpeechSynthesisUtterance(text);
+    uttr.lang = "ja-JP";
+    uttr.rate = 0.85;   // ← ゆっくり
+    uttr.pitch = 1.0;   // 落ち着いた声
+    speechSynthesis.cancel();
+    speechSynthesis.speak(uttr);
+  }
 
-/* ====== シール画像 ====== */
-const stickers = [];
-for (let i = 1; i <= 40; i++) {
-  stickers.push(`${baseRaw}/images/stickers${String(i).padStart(2,"0")}.png`);
-}
+  /* ===== 開始ナレーション ===== */
+  function playIntroNarration() {
+    const text = `
+１年間、GMチャレンジ。
+がんばりましたね。
 
-/* プレロード（任意だが安定性UP） */
-stickers.forEach(src => {
-  const img = new Image();
-  img.src = src;
-});
+これから、
+GMシール抽選会を始めます。
 
-/* ====== 効果音 ====== */
-const startSound   = new Audio(`${baseRaw}/sounds/start.mp3`);
-const spinSound    = new Audio(`${baseRaw}/sounds/spin.mp3`);
-const fanfareSound = new Audio(`${baseRaw}/sounds/fanfare.mp3`);
-spinSound.loop = true;
+スロットがまわり、
+止まったシールが、
+あなたのクラスの
+あたりシールです。
 
-/* ====== ナレーション ====== */
-const narrationStartText = `
-１年間、GMチャレンジを頑張りましたね。
-これから、GMシール抽選会を始めます。
-スロットが回り、止まったシールが、
-あなたのクラスの、あたりシールです。
-それでは、スタートします。
-`;
+それでは、
+スタートします。
+    `;
+    speak(text);
+  }
 
-const narrationEndText = `
-みなさん、自分のGMカードに、
+  /* ===== 終了ナレーション ===== */
+  function playEndNarration() {
+    const text = `
+みなさん。
+自分のGMカードに、
 あたりシールはありましたか。
 確認してください。
 
 あたりシールがあった人は、
 おめでとうございます。
-来月、景品をお渡しします。
+来月、
+あたりシールがあった人には、
+景品をお渡しします。
 
+GMカードは、
+なくさないように、
+先生に渡してください。
+
+また、
 シールがなかった人も、
-見逃していないか確認するので、
-先生にGMカードを渡してください。
+あたりシールを
+見逃していないか、
+保健室で確認するので、
+先生に渡してください。
 
-来年も、GMチャレンジで、
+来年も、
+GMチャレンジで、
 元気に生活しましょう。
-これで、GMシール抽選会を終わります。
-`;
 
-/* ====== 音声読み上げ ====== */
-function speak(text) {
-  if (!window.speechSynthesis) return;
-  const uttr = new SpeechSynthesisUtterance(text);
-  uttr.lang = "ja-JP";
-  uttr.rate = 0.8;
-  uttr.pitch = 1.0;
-  speechSynthesis.speak(uttr);
-}
+それでは、
+GMシール抽選会を
+終わります。
+    `;
+    speak(text);
+  }
 
-/* ====== UI ====== */
-const enableBtn = document.getElementById('enableBtn');
-const startBtn  = document.getElementById('startBtn');
-const slotImage = document.getElementById('slotImage');
-const resultDiv = document.getElementById('result');
+  /* ===== スロット処理 ===== */
+  const seals = Array.from({ length: 40 }, (_, i) => `stickers${i + 1}.png`);
+  const sealArea = document.getElementById("sealArea");
 
-enableBtn.addEventListener('click', () => {
-  startBtn.disabled = false;
-  enableBtn.style.display = 'none';
+  let spinInterval;
+  let spinning = false;
 
-  speak(narrationStartText);
+  function startGame() {
+    speechSynthesis.cancel();
+    document.getElementById("intro").classList.remove("active");
+    document.getElementById("game").classList.add("active");
+  }
 
-  // 音声アンロック（失敗してもOK）
-  startSound.play().then(()=>startSound.pause()).catch(()=>{});
-  spinSound.play().then(()=>spinSound.pause()).catch(()=>{});
-  fanfareSound.play().then(()=>fanfareSound.pause()).catch(()=>{});
-});
+  function spin() {
+    if (spinning) return;
+    spinning = true;
 
-/* ====== スロット制御 ====== */
-let timer = null;
+    startSound.currentTime = 0;
+    startSound.play();
 
-function startSlot() {
-  startBtn.disabled = true;
-  resultDiv.innerHTML = "";
+    spinSound.currentTime = 0;
+    spinSound.play();
 
-  startSound.currentTime = 0;
-  startSound.play().catch(()=>{});
+    spinInterval = setInterval(() => {
+      const n = Math.floor(Math.random() * seals.length);
+      sealArea.innerHTML = `<img src="${seals[n]}">`;
+    }, 90);
 
-  spinSound.currentTime = 0;
-  spinSound.play().catch(()=>{});
+    setTimeout(stopSpin, 3000);
+  }
 
-  timer = setInterval(() => {
-    const r = Math.floor(Math.random() * stickers.length);
-    slotImage.src = stickers[r];
-  }, 80);
+  function stopSpin() {
+    clearInterval(spinInterval);
+    spinSound.pause();
 
-  setTimeout(stopSlot, 3000);
-}
+    const n = Math.floor(Math.random() * seals.length);
 
-function stopSlot() {
-  clearInterval(timer);
-  timer = null;
+    sealArea.innerHTML = `
+      <div>
+        <img src="${seals[n]}" style="max-width:95%;"><br>
+        <div class="resultText">
+          あなたのクラスの<br>
+          あたりシールは、<br>
+          <strong>このシールです！</strong><br>
+          （No.${n + 1}）
+        </div>
+      </div>
+    `;
 
-  spinSound.pause();
+    winSound.currentTime = 0;
+    winSound.play();
 
-  fanfareSound.currentTime = 0;
-  fanfareSound.play().catch(()=>{});
+    setTimeout(playEndNarration, 1500);
+    spinning = false;
+  }
 
-  const img = slotImage.src;
-  resultDiv.innerHTML =
-    "あなたのクラスのあたりシールは、<br>" +
-    `<img src="${img}" style="width:160px;margin-top:10px;">`;
-
-  setTimeout(() => {
-    speak(narrationEndText);
-    startBtn.disabled = false;
-  }, 1500);
-}
-
-startBtn.addEventListener('click', startSlot);
+  function fullscreen() {
+    if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen();
+    }
+  }
 </script>
 
 </body>
